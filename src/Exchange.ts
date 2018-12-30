@@ -235,9 +235,9 @@ Exchange.prototype.removeLiquidity = function (amount = new BN(1), min_eth = new
     const eth_amount = amount.mul(this.ethReserve).dividedBy(this.totalSupply)
     const token_amount = amount.mul(this.tokenReserve).dividedBy(this.totalSupply)
     if (!(eth_amount.greaterThanOrEqualTo(min_eth) && token_amount.greaterThanOrEqualTo(min_tokens))) return;
-    this.totalSupply = this.totalSupply.min(amount);
-    this.ethReserve = this.ethReserve.min(eth_amount);
-    this.tokenReserve = this.tokenReserve.min(token_amount);
+    this.totalSupply = this.totalSupply.minus(amount);
+    this.ethReserve = this.ethReserve.minus(eth_amount);
+    this.tokenReserve = this.tokenReserve.minus(token_amount);
 
     return token_amount;
 }
@@ -649,45 +649,8 @@ Exchange.prototype.ethToTokenOutput = function (tokens_bought = new BN(1), max_e
 // def factoryAddress() -> address(Factory):
 //     return self.factory
 
-// # ERC20 compatibility for exchange liquidity modified from
-// # https://github.com/ethereum/vyper/blob/master/examples/tokens/ERC20.vy
-// @public
-// @constant
-// def balanceOf(_owner : address) -> uint256:
-//     return self.balances[_owner]
-
-// @public
-// def transfer(_to : address, _value : uint256) -> bool:
-//     self.balances[msg.sender] -= _value
-//     self.balances[_to] += _value
-//     log.Transfer(msg.sender, _to, _value)
-//     return True
-
-// @public
-// def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
-//     self.balances[_from] -= _value
-//     self.balances[_to] += _value
-//     self.allowances[_from][msg.sender] -= _value
-//     log.Transfer(_from, _to, _value)
-//     return True
-
-// @public
-// def approve(_spender : address, _value : uint256) -> bool:
-//     self.allowances[msg.sender][_spender] = _value
-//     log.Approval(msg.sender, _spender, _value)
-//     return True
-
-// @public
-// @constant
-// def allowance(_owner : address, _spender : address) -> uint256:
-//     return self.allowances[_owner][_spender]
-
-
 
 Exchange.prototype.neutralPrice = function () {
-    return this.tokenReserve / this.ethReserve;
+    return this.tokenReserve.dividedBy(this.ethReserve);
 }
-// Exchange.prototype.change = function (ethValue) {
-
-// }
 

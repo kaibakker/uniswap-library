@@ -10,9 +10,9 @@ describe('class Exchange', () => {
     it('initialize correctly  with values', () => {
         let exchange = new Exchange({ ethReserve: 5, tokenReserve: 100, totalSupply: 1 })
 
-        // expect(exchange.ethReserve).to.be.bignumber.equal(new BN(5));
-        // expect(exchange.tokenReserve).to.be.bignumber.equal(new BN(100));
-        // expect(exchange.tokenSupply).to.be.bignumber.equal(new BN(1));
+        expect(exchange.ethReserve).to.be.bignumber.equal(5);
+        // expect(exchange.tokenReserve).to.be.bignumber;
+        // expect(exchange.tokenSupply).to.be.bignumber;
         expect(exchange.symbol).to.equal(undefined);
     });
 
@@ -87,45 +87,47 @@ describe('class Exchange', () => {
         expect(exchange.tokenAddress).to.equal('0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2');
     });
 
+    it('getInputPrice() works correctly', () => {
+        let exchange = new Exchange({ ethReserve: 5, tokenReserve: 100, totalSupply: 1 })
 
+        // expect(exchange.getInputPrice(new BN(1))).to.be.bignumber.equal(16.6249791562447890612)
+    })
 
+    it('addLiquidity() works correctly', () => {
+        let exchange = new Exchange({ ethReserve: 5, tokenReserve: 100, totalSupply: 1 })
+        const change = exchange.addLiquidity(new BN(10))
 
+        expect(change).to.be.bignumber.equal(2);
+        expect(exchange.ethReserve).to.be.bignumber.equal(15);
+        expect(exchange.tokenReserve).to.be.bignumber.equal(301);
+        expect(exchange.totalSupply).to.be.bignumber.equal(3);
+    });
 
+    it('removeLiquidity() works correctly', () => {
+        let exchange = new Exchange({ ethReserve: 5, tokenReserve: 100, totalSupply: 5 })
+        const change = exchange.removeLiquidity(new BN(1))
 
-    // console.log(exchange2);
+        expect(change).to.be.bignumber.equal(20);
+        expect(exchange.ethReserve).to.be.bignumber.equal(4);
+        expect(exchange.tokenReserve).to.be.bignumber.equal(80);
+        expect(exchange.totalSupply).to.be.bignumber.equal(4);
+    });
 
-    // console.log(exchange3);
+    it('neutralPrice() works correctly', () => {
+        let exchange = new Exchange({ ethReserve: 5, tokenReserve: 100, totalSupply: 5 })
+        const price = exchange.neutralPrice()
 
+        expect(price).to.be.bignumber.equal(20);
+    });
 
+    it('ethToTokenOutput() works correctly', () => {
+        let exchange = new Exchange({ ethReserve: 5, tokenReserve: 100, totalSupply: 5 })
+        const change = exchange.ethToTokenOutput(new BN(10))
 
-    // const trade5 = exchange.addLiquidity(100);
+        // expect(change).to.be.bignumber.equal(12.03309929789368104313);
+        // expect(exchange.ethReserve).to.be.bignumber.equal(4);
+        // expect(exchange.tokenReserve).to.be.bignumber.equal(80);
+        // expect(exchange.totalSupply).to.be.bignumber.equal(4);
+    });
 
-    // const ethValue = 1
-    // const price = exchange.neutralPrice();
-    // const tokenValue = (exchange.getInputPrice(ethValue))
-    // console.log(ethValue / tokenValue * price - 1)
-
-
-    // exchange.getInputPrice(10)
-    // exchange.removeLiquidity(10)
-    // exchange.removeLiquidity(10)
-    // exchange.getInputPrice(10)
-    // exchange.removeLiquidity(10)
-    // exchange.getInputPrice(10)
-    // exchange.removeLiquidity(10)
-    // exchange.getInputPrice(10)
-    // exchange.removeLiquidity(10)
-    // exchange.getInputPrice(10)
-    // exchange.removeLiquidity(10)
-
-    // exchange.ethToTokenOutput(10)
-    // exchange.ethToTokenInput(10)
-    // exchange.removeLiquidity(10)
-    // exchange.removeLiquidity(10)
-
-    // exchange.removeLiquidity(10)
-
-    // exchange.getInputPrice(10)
-    // // console.log(exchange)
-    // // console.log(trade5)
 });
