@@ -91,14 +91,13 @@ Exchange.prototype.exchangeTokenContract = function () {
 
 Exchange.prototype.factoryContract = function () {
     return new web3.eth.Contract(FACTORY_ABI, addresses.payload.factoryAddress);
-
 }
 
 Exchange.prototype.updateTotalSupply = async function () {
     this.totalSupply = new BN(await this.exchangeTokenContract().methods.totalSupply().call());
 }
 
-Exchange.prototype.updateTotalReserve = async function () {
+Exchange.prototype.updateTokenReserve = async function () {
     this.tokenReserve = new BN(await this.tokenContract().methods.balanceOf(this.exchangeAddress).call());
 }
 
@@ -107,13 +106,13 @@ Exchange.prototype.updateEthReserve = async function () {
 }
 
 Exchange.prototype.updateSymbol = async function () {
-    this.symbol = await this.exchangeContract().methods.symbol().call();
+    this.symbol = web3.utils.hexToString(await this.exchangeContract().methods.symbol().call());
 }
 Exchange.prototype.updateName = async function () {
-    this.name = await this.exchangeContract().methods.name().call();
+    this.name = web3.utils.hexToString(await this.exchangeContract().methods.name().call());
 }
 Exchange.prototype.updateDecimals = async function () {
-    this.decimals = await this.exchangeContract().methods.decimals().call();
+    this.decimals = parseInt(await this.exchangeContract().methods.decimals().call());
 }
 Exchange.prototype.updateTokenAddress = async function () {
     this.tokenAddress = await this.exchangeContract().methods.tokenAddress().call();
