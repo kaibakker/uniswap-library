@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "outDir": "lib",
+        "rootDir": "src",
+        "lib": ["es2015"],
+        "resolveJsonModule": true,
+        "target": "es5",
+        "module": "commonjs",
+        "declaration": true
+    },
+    "include": ["./src/**/*"]
+}
