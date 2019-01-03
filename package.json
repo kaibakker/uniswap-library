@@ -18,7 +18,7 @@
         "build": "npm run build:commonjs",
         "lint": "tslint --format stylish --project .",
         "rebuild_and_test": "npm run build && mocha tests/*",
-        "test": "mocha tests/*",
+        "test": "npm run build && mocha tests/*",
         "test:coverage": "nyc npm run test --all && npm run coverage:report:lcov",
         "clean": "shx rm -rf _bundles lib",
         "build:commonjs": "tsc -b"

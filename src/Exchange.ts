@@ -1,43 +1,3 @@
-// # @title Uniswap Exchange Interface V1
-// # @notice Source code found at https://github.com/uniswap
-// # @notice Use at your own risk
-
-// contract Factory():
-//     def getExchange(token_addr: address) -> address: constant
-
-// contract Exchange():
-//     def getEthToTokenOutputPrice(tokens_bought: uint256) -> uint256(wei): constant
-//     def ethToTokenTransferInput(min_tokens: uint256, deadline: timestamp, recipient: address) -> uint256: modifying
-//     def ethToTokenTransferOutput(tokens_bought: uint256, deadline: timestamp, recipient: address) -> uint256(wei): modifying
-
-// TokenPurchase: event({buyer: indexed(address), eth_sold: indexed(uint256(wei)), tokens_bought: indexed(uint256)})
-// EthPurchase: event({buyer: indexed(address), tokens_sold: indexed(uint256), eth_bought: indexed(uint256(wei))})
-// AddLiquidity: event({provider: indexed(address), eth_amount: indexed(uint256(wei)), token_amount: indexed(uint256)})
-// RemoveLiquidity: event({provider: indexed(address), eth_amount: indexed(uint256(wei)), token_amount: indexed(uint256)})
-// Transfer: event({_from: indexed(address), _to: indexed(address), _value: uint256})
-// Approval: event({_owner: indexed(address), _spender: indexed(address), _value: uint256})
-
-// name: public(bytes32)                             # Uniswap V1
-// symbol: public(bytes32)                           # UNI-V1
-// decimals: public(uint256)                         # 18
-// totalSupply: public(uint256)                      # total number of UNI in existence
-// balances: uint256[address]                        # UNI balance of an address
-// allowances: (uint256[address])[address]           # UNI allowance of one address on another
-// token: address(ERC20)                             # address of the ERC20 token traded on this contract
-// factory: Factory                                  # interface for the factory that created this contract
-
-// # @dev This function acts as a contract constructor which is not currently supported in contracts deployed
-// #      using create_with_code_of(). It is called once by the factory during contract creation.
-// @public
-// def setup(token_addr: address):
-//     assert (self.factory == ZERO_ADDRESS and self.token == ZERO_ADDRESS) and token_addr != ZERO_ADDRESS
-//     self.factory = msg.sender
-//     self.token = token_addr
-//     self.name = 0x556e697377617020563100000000000000000000000000000000000000000000
-//     self.symbol = 0x554e492d56310000000000000000000000000000000000000000000000000000
-//     self.decimals = 18
-
-
 import * as Web3 from 'web3';
 
 import * as EXCHANGE_ABI from './abi/exchange.json';
@@ -72,6 +32,7 @@ export function Exchange(args) {
     this.tokenReserve = new BN(args.tokenReserve ? args.tokenReserve : new BN(0));
     this.totalSupply = new BN(args.totalSupply ? args.totalSupply : new BN(0));
     this.deltas = [] as delta[];
+
     if (args.symbol) {
         this.exchangeAddress = addresses.payload.exchangeAddresses.addresses.filter((x) => { return x[0] === args.symbol })[0][1];
         this.tokenAddress = addresses.payload.tokenAddresses.addresses.filter((x) => { return x[0] === args.symbol })[0][1];
@@ -159,6 +120,52 @@ Exchange.prototype.syncBalancesWithLogs = function () {
 }
 
 
+
+Exchange.prototype.performDelta = function (delta) {
+    this.ethReserve = this.ethReserve.plus(delta.eth);
+    this.tokenReserve = this.tokenReserve.plus(delta.tokens);
+    this.totalSupply = this.totalSupply.plus(delta.liquidity);
+    this.deltas.push(delta as delta)
+    this.valid()
+    return this;
+}
+Exchange.prototype.asDelta = function () {
+    this.valid()
+
+    let delta = {} as delta;
+    delta.eth = this.ethReserve();
+    delta.tokens = this.tokenReserve();
+    delta.liquidity = this.totalSupply();
+    return delta;
+}
+
+
+
+Exchange.prototype.valid = function () {
+    if (!this.ethReserve.gte(0)) throw new Error("NEGATIVE_ETH_RESERVE")
+    if (!this.tokenReserve.gte(0)) throw new Error("NEGATIVE_TOKEN_RESERVE")
+    if (!this.totalSupply.gte(0)) throw new Error("NEGATIVE_TOTAL_SUPPLY")
+}
+
+// Exchange.prototype.validate = function () {
+//     const delta = {
+//         eth: this.deltas.reduce((sum: BN, delta: delta) => {
+//             return sum.plus(delta.eth)
+//         }, 0),
+//         tokens: this.deltas.reduce((sum: BN, delta: delta) => {
+//             return sum.plus(delta.tokens)
+//         }, 0),
+//         liquidity: this.deltas.reduce((sum: BN, delta: delta) => {
+//             return sum.plus(delta.liquidity)
+//         }, 0),
+//     } as delta;
+//     if (!this.ethReserve.equal(delta.eth)) throw new Error("NEGATIVE_ETH_RESERVE")
+//     if (!this.tokenReserve.equal(delta.tokens)) throw new Error("NEGATIVE_TOKEN_RESERVE")
+//     if (!this.totalSupply.equal(delta.liquidity)) throw new Error("NEGATIVE_TOTAL_SUPPLY")
+// }
+
+
+
 // # @notice Deposit ETH and Tokens (self.token) at current ratio to mint UNI tokens.
 // # @dev min_amount has a djfferent meaning when total UNI supply is 0.
 // # @param min_liquidity Minimum number of UNI sender will mint if total UNI supply is greater than 0.
@@ -201,24 +208,23 @@ Exchange.prototype.addLiquidity = function (
     max_tokens = new BN(10 ** 9),
     deadline = true
 ): delta {
-    if (!(max_tokens.greaterThan(0) && value.greaterThan(0))) return;
+    if (!(max_tokens.greaterThan(0) && value.greaterThan(0))) throw new Error("SHOULD_BE_GREWATER");
 
     if (this.totalSupply.greaterThan(0)) {
-        if (!(min_liquidity.greaterThan(0))) return;
+        if (!(min_liquidity.greaterThan(0))) throw new Error("SHOULD_BE_GREWATER");
 
         const token_amount = value.mul(this.tokenReserve).div(this.ethReserve).plus(1);
         const liquidity_minted = value.mul(this.totalSupply).div(this.ethReserve);
-        if (!(max_tokens.greaterThanOrEqualTo(token_amount) && liquidity_minted.greaterThanOrEqualTo(min_liquidity))) return;
+        if (!(max_tokens.greaterThanOrEqualTo(token_amount) && liquidity_minted.greaterThanOrEqualTo(min_liquidity))) throw new Error("SHOULD_BE_GREWATER");
 
-        this.totalSupply = this.totalSupply.plus(liquidity_minted)
-        this.ethReserve = this.ethReserve.plus(value)
-        this.tokenReserve = this.tokenReserve.plus(token_amount)
-        return { eth: value, tokens: token_amount, liquidity: liquidity_minted }
+        const delta = { eth: value, tokens: token_amount, liquidity: liquidity_minted }
+        this.performDelta(delta)
+
+        return delta
     } else {
-        this.totalSupply = value;
-        this.ethReserve = value;
-        this.tokenReserve = max_tokens;
-        return { eth: value, tokens: max_tokens, liquidity: value }
+        const delta = { eth: value, tokens: max_tokens, liquidity: value }
+        this.performDelta(delta)
+        return delta
     }
 }
 
@@ -257,11 +263,13 @@ Exchange.prototype.removeLiquidity = function (
     const eth_amount = amount.mul(this.ethReserve).div(this.totalSupply)
     const token_amount = amount.mul(this.tokenReserve).div(this.totalSupply)
     if (!(eth_amount.greaterThanOrEqualTo(min_eth) && token_amount.greaterThanOrEqualTo(min_tokens))) return;
-    this.totalSupply = this.totalSupply.minus(amount);
-    this.ethReserve = this.ethReserve.minus(eth_amount);
-    this.tokenReserve = this.tokenReserve.minus(token_amount);
+    // this.totalSupply = this.totalSupply.minus(amount);
+    // this.ethReserve = this.ethReserve.minus(eth_amount);
+    // this.tokenReserve = this.tokenReserve.minus(token_amount);
 
-    return { eth: eth_amount, tokens: token_amount, liquidity: amount };
+    const delta = { eth: eth_amount.neg(), tokens: token_amount.neg(), liquidity: amount.neg() };
+    this.performDelta(delta)
+    return delta
 }
 
 // # @dev Pricing functon for converting between ETH and Tokens.
@@ -332,25 +340,19 @@ Exchange.prototype.ethToTokenInput = function (
     recipient = true
 ): delta {
     // if (!((eth_sold > 0 && min_tokens > 0))) return
-    if (!(eth_sold.greaterThan(0))) throw "ETH_SOLD NEGATIVE";
-    if (!(min_tokens.greaterThan(0))) throw "MIN_TOKENS NEGATIVE";
+    if (!(eth_sold.greaterThan(0))) throw new Error("ETH_SOLD NEGATIVE");
+    if (!(min_tokens.greaterThan(0))) throw new Error("MIN_TOKENS NEGATIVE");
     // const this.tokenReserve = this.token.balanceOf(this)
     const delta = this.getInputPrice(eth_sold, this.ethReserve, this.tokenReserve);
     if (!(delta.tokens.gte(min_tokens))) return;
 
-    this.ethReserve = this.ethReserve.plus(eth_sold);
-    this.tokenReserve = this.tokenReserve.minus(delta.tokens);
+    this.performDelta(delta)
     // if (!(self.token.transfer(recipient, tokens_bought))) return
     // log.TokenPurchase(buyer, eth_sold, tokens_bought)
     return delta;
 }
 
-Exchange.prototype.performDelta = function (delta) {
-    this.ethReserve = this.ethReserve.plus(delta.eth);
-    this.tokenReserve = this.tokenReserve.plus(delta.tokens);
-    this.totalSupply = this.totalSupply.plus(delta.liquidity);
-    return this;
-}
+
 
 // # @notice Convert ETH to Tokens.
 // # @dev User specifies exact input (msg.value).
@@ -402,15 +404,15 @@ Exchange.prototype.ethToTokenOutput = function (
     buyer = true,
     recipient = true
 ): delta {
-    if (!(tokens_bought.greaterThan(0))) throw "TOKENS BOUGHT NEGATIVE";
-    if (!(max_eth.greaterThan(0))) throw "ETH BOUGHT NEGATIVE";
+    if (!(tokens_bought.greaterThan(0))) throw new Error("TOKENS BOUGHT NEGATIVE");
+    if (!(max_eth.greaterThan(0))) throw new Error("ETH BOUGHT NEGATIVE");
 
     const eth_sold = this.getOutputPrice(tokens_bought, this.tokenReserve.minus(max_eth), this.tokenReserve)
 
-    this.ethReserve = this.ethReserve.plus(eth_sold);
-    this.tokenReserve = this.tokenReserve.minus(tokens_bought);
+    const delta = { eth: eth_sold.negate(), tokens: tokens_bought, liquidity: new BN(0) }
+    this.performDelta(delta)
 
-    return { eth: eth_sold.negate(), tokens: tokens_bought, liquidity: new BN(0) }
+    return delta;
 }
 
 
@@ -491,16 +493,13 @@ Exchange.prototype.tokenToEthOutput = function (
     buyer = true,
     recipient = true): delta {
 
-
-    if (!(eth_bought.greaterThan(0))) throw ("NEGATIVE_ETH_BOUGHT");
-    // if (!(max_tokens.greaterThan(0)) throw("NEGATIVE_ETH_BOUGHT");
+    if (!(eth_bought.greaterThan(0))) throw new Error("NEGATIVE_ETH_BOUGHT");
 
     const tokens_sold = this.getOutputPrice(eth_bought, this.tokenReserve, this.ethReserve)
 
-    this.ethReserve = this.ethReserve.minus(eth_bought);
-    this.tokenReserve = this.tokenReserve.plus(tokens_sold);
-
-    return { tokens: tokens_sold, eth: eth_bought, liquidity: new BN(0) }
+    const delta = { tokens: tokens_sold, eth: eth_bought, liquidity: new BN(0) }
+    this.performDelta(delta)
+    return delta;
 }
 
 
