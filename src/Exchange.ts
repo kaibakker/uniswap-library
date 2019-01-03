@@ -21,6 +21,9 @@ interface delta {
     liquidity: BN
 }
 
+const deltaToString = function (delta) {
+    return `delta(${delta.eth.toString()}, ${delta.tokens.toString()}, ${delta.liquidity.toString()})`;
+}
 
 export function Exchange(args) {
     this.name = args.name;
@@ -73,53 +76,84 @@ Exchange.prototype.updateEthReserve = async function () {
 Exchange.prototype.updateSymbol = async function () {
     this.symbol = web3.utils.hexToString(await this.exchangeContract().methods.symbol().call());
 }
+
 Exchange.prototype.updateName = async function () {
     this.name = web3.utils.hexToString(await this.exchangeContract().methods.name().call());
 }
+
 Exchange.prototype.updateDecimals = async function () {
     this.decimals = parseInt(await this.exchangeContract().methods.decimals().call());
 }
+
 Exchange.prototype.updateTokenAddress = async function () {
     this.tokenAddress = await this.exchangeContract().methods.tokenAddress().call();
 }
 
-Exchange.prototype.syncBalancesWithLogs = function () {
-
+Exchange.prototype.syncBalancesWithLogs = function (done) {
     let options = {
         fromBlock: 6627944,
         toBlock: 'latest'
     };
 
-
-    // console.log(x)
     this.exchangeContract().getPastEvents("allEvents", options, (err, events) => {
-        // console.log(events)
+        if (err) {
+            return
+        }
+        console.log(this.toString());
+
         events.forEach((event) => {
+            // console.log(event);
+            const delta: delta = { eth: new BN(0), tokens: new BN(0), liquidity: new BN(0) }
             if (event.event === 'RemoveLiquidity') {
-                // console.log(event);
                 // this.removeLiquidity(new BN(event.returnValues.eth_amount));
+                delta.eth = new BN(event.returnValues.eth_amount).neg();
+                delta.tokens = new BN(event.returnValues.token_amount).neg();
+                const alternativeDelta = this.ethToTokenInput(new BN(event.eth_sold), new BN(event.tokens_bought))
+                if (delta !== alternativeDelta) {
+                    console.log(deltaToString(delta), deltaToString(alternativeDelta))
+                }
             } else if (event.event === 'AddLiquidity') {
-                // console.log(event);
                 // this.addLiquidity(new BN(event.returnValues.eth_amount));
+                delta.eth = new BN(event.returnValues.eth_amount);
+                delta.tokens = new BN(event.returnValues.token_amount);
+                const alternativeDelta = this.ethToTokenInput(new BN(event.eth_sold), new BN(event.tokens_bought))
+                if (delta !== alternativeDelta) {
+                    console.log(deltaToString(delta), deltaToString(alternativeDelta))
+                }
             } else if (event.event === 'EthPurchase') {
-                // console.log(event);
                 // this.tokenToEthInput(new BN(event.eth_bought), new BN(event.tokens_sold))
+                delta.eth = new BN(event.returnValues.eth_bought);
+                delta.tokens = new BN(event.returnValues.tokens_sold).neg();
+                const alternativeDelta = this.getTokenToEthInputPrice(new BN(event.eth_sold))
+                if (delta !== alternativeDelta) {
+                    console.log(deltaToString(delta), deltaToString(alternativeDelta))
+                }
             } else if (event.event === 'TokenPurchase') {
-                // console.log(event);
                 // this.ethToTokenInput(new BN(event.eth_sold), new BN(event.tokens_bought))
+                delta.eth = new BN(event.returnValues.eth_sold).neg();
+                delta.tokens = new BN(event.returnValues.tokens_bought);
+                const alternativeDelta = this.ethToTokenInput(new BN(event.eth_sold), new BN(event.tokens_bought))
+                if (delta !== alternativeDelta) {
+                    console.log(deltaToString(delta), deltaToString(alternativeDelta))
+                }
             } else if (event.event === 'Transfer') {
                 if (event.returnValues._from === '0x0000000000000000000000000000000000000000') {
-                    this.deltas.push(this.addLiquidity(new BN(event.returnValues._value)));
+                    // this.deltas.push(this.addLiquidity(new BN(event.returnValues._value)));
+                    delta.liquidity = new BN(event.returnValues._value);
                 } else if (event.returnValues._to === '0x0000000000000000000000000000000000000000') {
-                    this.deltas.push(this.removeLiquidity(new BN(event.returnValues._value)));
+                    // this.deltas.push(this.removeLiquidity(new BN(event.returnValues._value)));
+                    delta.liquidity = new BN(event.returnValues._value).neg();
+                } else {
+                    return;
                 }
             }
+            // console.log(this.toString())
+            this.performDelta(delta)
         })
-        console.log(this.totalSupply);
+        console.log(this.toString());
+        done(this)
     })
 }
-
-
 
 Exchange.prototype.performDelta = function (delta) {
     this.ethReserve = this.ethReserve.plus(delta.eth);
@@ -129,17 +163,18 @@ Exchange.prototype.performDelta = function (delta) {
     this.valid()
     return this;
 }
-Exchange.prototype.asDelta = function () {
-    this.valid()
 
+Exchange.prototype.toDelta = function () {
     let delta = {} as delta;
-    delta.eth = this.ethReserve();
-    delta.tokens = this.tokenReserve();
-    delta.liquidity = this.totalSupply();
+    delta.eth = this.ethReserve;
+    delta.tokens = this.tokenReserve;
+    delta.liquidity = this.totalSupply;
     return delta;
 }
 
-
+Exchange.prototype.toString = function () {
+    return `delta(${this.ethReserve.toString()}, ${this.tokenReserve.toString()}, ${this.totalSupply.toString()})`;
+}
 
 Exchange.prototype.valid = function () {
     if (!this.ethReserve.gte(0)) throw new Error("NEGATIVE_ETH_RESERVE")
@@ -147,23 +182,22 @@ Exchange.prototype.valid = function () {
     if (!this.totalSupply.gte(0)) throw new Error("NEGATIVE_TOTAL_SUPPLY")
 }
 
-// Exchange.prototype.validate = function () {
-//     const delta = {
-//         eth: this.deltas.reduce((sum: BN, delta: delta) => {
-//             return sum.plus(delta.eth)
-//         }, 0),
-//         tokens: this.deltas.reduce((sum: BN, delta: delta) => {
-//             return sum.plus(delta.tokens)
-//         }, 0),
-//         liquidity: this.deltas.reduce((sum: BN, delta: delta) => {
-//             return sum.plus(delta.liquidity)
-//         }, 0),
-//     } as delta;
-//     if (!this.ethReserve.equal(delta.eth)) throw new Error("NEGATIVE_ETH_RESERVE")
-//     if (!this.tokenReserve.equal(delta.tokens)) throw new Error("NEGATIVE_TOKEN_RESERVE")
-//     if (!this.totalSupply.equal(delta.liquidity)) throw new Error("NEGATIVE_TOTAL_SUPPLY")
-// }
-
+Exchange.prototype.validate = function () {
+    const delta = {
+        eth: this.deltas.reduce((sum: BN, delta: delta) => {
+            return sum.plus(delta.eth)
+        }, 0),
+        tokens: this.deltas.reduce((sum: BN, delta: delta) => {
+            return sum.plus(delta.tokens)
+        }, 0),
+        liquidity: this.deltas.reduce((sum: BN, delta: delta) => {
+            return sum.plus(delta.liquidity)
+        }, 0),
+    } as delta;
+    if (!this.ethReserve.equal(delta.eth)) throw new Error("NEGATIVE_ETH_RESERVE")
+    if (!this.tokenReserve.equal(delta.tokens)) throw new Error("NEGATIVE_TOKEN_RESERVE")
+    if (!this.totalSupply.equal(delta.liquidity)) throw new Error("NEGATIVE_TOTAL_SUPPLY")
+}
 
 
 // # @notice Deposit ETH and Tokens (self.token) at current ratio to mint UNI tokens.
@@ -203,29 +237,24 @@ Exchange.prototype.valid = function () {
 //         return initial_liquidity
 
 Exchange.prototype.addLiquidity = function (
-    value = new BN(1),
+    eth = new BN(1),
     min_liquidity = new BN(1),
-    max_tokens = new BN(10 ** 9),
-    deadline = true
+    max_tokens = new BN(10 ** 9)
 ): delta {
-    if (!(max_tokens.greaterThan(0) && value.greaterThan(0))) throw new Error("SHOULD_BE_GREWATER");
-
+    if (!(max_tokens.greaterThan(0) && eth.greaterThan(0))) throw new Error("Error");
+    const delta = { eth: eth } as delta
     if (this.totalSupply.greaterThan(0)) {
-        if (!(min_liquidity.greaterThan(0))) throw new Error("SHOULD_BE_GREWATER");
+        if (!(min_liquidity.greaterThan(0))) throw new Error("Error");
 
-        const token_amount = value.mul(this.tokenReserve).div(this.ethReserve).plus(1);
-        const liquidity_minted = value.mul(this.totalSupply).div(this.ethReserve);
-        if (!(max_tokens.greaterThanOrEqualTo(token_amount) && liquidity_minted.greaterThanOrEqualTo(min_liquidity))) throw new Error("SHOULD_BE_GREWATER");
-
-        const delta = { eth: value, tokens: token_amount, liquidity: liquidity_minted }
-        this.performDelta(delta)
-
-        return delta
+        delta.tokens = eth.mul(this.tokenReserve).div(this.ethReserve).plus(1);
+        delta.liquidity = eth.mul(this.totalSupply).div(this.ethReserve);
+        if (!(max_tokens.greaterThanOrEqualTo(delta.tokens) && delta.liquidity.greaterThanOrEqualTo(min_liquidity))) throw new Error("Error");
     } else {
-        const delta = { eth: value, tokens: max_tokens, liquidity: value }
-        this.performDelta(delta)
-        return delta
+        delta.tokens = max_tokens
+        delta.liquidity = eth
     }
+    this.performDelta(delta)
+    return delta
 }
 
 // # @dev Burn UNI tokens to withdraw ETH and Tokens at current ratio.
@@ -254,18 +283,13 @@ Exchange.prototype.addLiquidity = function (
 Exchange.prototype.removeLiquidity = function (
     amount = new BN(1),
     min_eth = new BN(1),
-    min_tokens = new BN(1),
-    deadline = true
+    min_tokens = new BN(1)
 ): delta {
-    // if (!((amount > 0) && (min_eth > 0 && min_tokens > 0))) return;
     if (!(amount.greaterThan(0) && min_eth.greaterThan(0) && min_tokens.greaterThan(0))) return;
     if (!(this.totalSupply.greaterThan(0))) return;
     const eth_amount = amount.mul(this.ethReserve).div(this.totalSupply)
     const token_amount = amount.mul(this.tokenReserve).div(this.totalSupply)
     if (!(eth_amount.greaterThanOrEqualTo(min_eth) && token_amount.greaterThanOrEqualTo(min_tokens))) return;
-    // this.totalSupply = this.totalSupply.minus(amount);
-    // this.ethReserve = this.ethReserve.minus(eth_amount);
-    // this.tokenReserve = this.tokenReserve.minus(token_amount);
 
     const delta = { eth: eth_amount.neg(), tokens: token_amount.neg(), liquidity: amount.neg() };
     this.performDelta(delta)
@@ -296,7 +320,7 @@ Exchange.prototype.getInputPrice = function (
     const input_amount_with_fee = input_amount.mul(997)
     const numerator = input_amount_with_fee.mul(output_reserve)
     const denominator = input_reserve.mul(1000).plus(input_amount_with_fee)
-    return { tokens: numerator.div(denominator), eth: numerator.div(denominator), liquidity: new BN(0) }
+    return { tokens: numerator.div(denominator), eth: input_amount.neg(), liquidity: new BN(0) }
 }
 
 // # @dev Pricing functon for converting between ETH and Tokens.
@@ -320,7 +344,7 @@ Exchange.prototype.getOutputPrice = function (
     if (!(input_reserve.greaterThan(0) && output_reserve.greaterThan(0))) return;
     const numerator = input_reserve.mul(output_amount).mul(1000)
     const denominator = (output_reserve.minus(output_amount)).mul(997)
-    return { tokens: numerator.div(denominator).plus(1), eth: numerator.div(denominator).plus(1), liquidity: new BN(0) }
+    return { tokens: numerator.div(denominator).plus(1).neg(), eth: output_amount, liquidity: new BN(0) }
 }
 
 // @private
@@ -334,21 +358,15 @@ Exchange.prototype.getOutputPrice = function (
 //     return tokens_bought
 Exchange.prototype.ethToTokenInput = function (
     eth_sold = new BN(1),
-    min_tokens = new BN(1),
-    deadline = true,
-    buyer = true,
-    recipient = true
+    min_tokens = new BN(1)
 ): delta {
-    // if (!((eth_sold > 0 && min_tokens > 0))) return
     if (!(eth_sold.greaterThan(0))) throw new Error("ETH_SOLD NEGATIVE");
     if (!(min_tokens.greaterThan(0))) throw new Error("MIN_TOKENS NEGATIVE");
-    // const this.tokenReserve = this.token.balanceOf(this)
-    const delta = this.getInputPrice(eth_sold, this.ethReserve, this.tokenReserve);
+    const delta = this.getInputPrice(eth_sold);
     if (!(delta.tokens.gte(min_tokens))) return;
 
     this.performDelta(delta)
-    // if (!(self.token.transfer(recipient, tokens_bought))) return
-    // log.TokenPurchase(buyer, eth_sold, tokens_bought)
+
     return delta;
 }
 
@@ -399,17 +417,13 @@ Exchange.prototype.ethToTokenInput = function (
 
 Exchange.prototype.ethToTokenOutput = function (
     tokens_bought = new BN(1),
-    max_eth = new BN(1),
-    deadline = true,
-    buyer = true,
-    recipient = true
+    max_eth = new BN(1)
 ): delta {
     if (!(tokens_bought.greaterThan(0))) throw new Error("TOKENS BOUGHT NEGATIVE");
     if (!(max_eth.greaterThan(0))) throw new Error("ETH BOUGHT NEGATIVE");
 
-    const eth_sold = this.getOutputPrice(tokens_bought, this.tokenReserve.minus(max_eth), this.tokenReserve)
+    const delta = this.getOutputPrice(tokens_bought)
 
-    const delta = { eth: eth_sold.negate(), tokens: tokens_bought, liquidity: new BN(0) }
     this.performDelta(delta)
 
     return delta;
@@ -489,16 +503,13 @@ Exchange.prototype.ethToTokenOutput = function (
 Exchange.prototype.tokenToEthOutput = function (
     eth_bought = new BN(1),
     max_tokens = new BN(1),
-    deadline = true,
-    buyer = true,
-    recipient = true): delta {
-
+): delta {
     if (!(eth_bought.greaterThan(0))) throw new Error("NEGATIVE_ETH_BOUGHT");
 
-    const tokens_sold = this.getOutputPrice(eth_bought, this.tokenReserve, this.ethReserve)
+    const delta = this.getOutputPrice(eth_bought)
 
-    const delta = { tokens: tokens_sold, eth: eth_bought, liquidity: new BN(0) }
     this.performDelta(delta)
+
     return delta;
 }
 
@@ -719,18 +730,22 @@ Exchange.prototype.reserve = function () {
 }
 
 Exchange.prototype.makeToPrice = function (price, max_liquidity) {
-    let deltaEthReserve = this.ethReserve.mul(this.tokenReserve).div(new BN(price)).sqrt().minus(this.ethReserve)
+    let delta = {
+        eth: this.reserve().div(new BN(price)).sqrt().minus(this.ethReserve)
+    }
 
-    if (deltaEthReserve.gt(0)) {
+    if (delta.eth.gt(0)) {
         if (max_liquidity) {
-            deltaEthReserve = BN.min(deltaEthReserve, max_liquidity)
+            delta.eth = BN.min(delta.eth, max_liquidity)
         }
-        return this.ethToTokenInput(deltaEthReserve);
+        return this.ethToTokenInput(delta.eth);
     } else {
         if (max_liquidity) {
-            deltaEthReserve = BN.min(deltaEthReserve.neg(), max_liquidity)
+            delta.eth = BN.min(delta.eth.neg(), max_liquidity)
+        } else {
+            delta.eth = delta.eth.neg()
         }
-        return this.tokenToEthOutput(deltaEthReserve);
+        return this.tokenToEthOutput(delta.eth);
     }
 }
 
