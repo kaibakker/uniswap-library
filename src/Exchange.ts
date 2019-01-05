@@ -27,7 +27,7 @@ export class Exchange {
     exchangeAddress: string;
     decimals: number;
 
-    constructor(tokenAddress, symbol, exchangeAddress, name) {
+    constructor(tokenAddress: string = null, symbol: string = null, exchangeAddress: string = null, name: string = null) {
         this.name = name;
         this.symbol = symbol;
         this.tokenAddress = tokenAddress;

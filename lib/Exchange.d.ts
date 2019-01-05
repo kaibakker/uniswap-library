@@ -7,7 +7,7 @@ export declare class Exchange {
     tokenAddress: string;
     exchangeAddress: string;
     decimals: number;
-    constructor(tokenAddress: any, symbol: any, exchangeAddress: any, name: any);
+    constructor(tokenAddress?: string, symbol?: string, exchangeAddress?: string, name?: string);
     exchangeContract(): any;
     tokenContract(): any;
     exchangeTokenContract(): any;

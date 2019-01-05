@@ -139,14 +139,12 @@ export class State {
 
 
     getInputPrice(
-        input_amount,
-        input_reserve,
-        output_reserve
+        input_amount
     ): Trade {
-        if (!(input_reserve.greaterThan(0) && output_reserve.greaterThan(0))) return;
+        if (!(this.delta.eth.greaterThan(0) && this.delta.tokens.greaterThan(0))) return;
         const input_amount_with_fee = input_amount.mul(997)
-        const numerator = input_amount_with_fee.mul(output_reserve)
-        const denominator = input_reserve.mul(1000).plus(input_amount_with_fee)
+        const numerator = input_amount_with_fee.mul(this.delta.tokens)
+        const denominator = this.delta.eth.mul(1000).plus(input_amount_with_fee)
         const delta = new Delta(numerator.div(denominator), input_amount.neg(), new BN(0))
         return this.performDelta(delta);
     }
@@ -162,13 +160,11 @@ export class State {
 
 
     getOutputPrice(
-        output_amount,
-        input_reserve,
-        output_reserve
+        output_amount
     ): Trade {
-        if (!(input_reserve.greaterThan(0) && output_reserve.greaterThan(0))) return;
-        const numerator = input_reserve.mul(output_amount).mul(1000)
-        const denominator = (output_reserve.minus(output_amount)).mul(997)
+        if (!(this.delta.tokens.greaterThan(0) && this.delta.eth.greaterThan(0))) return;
+        const numerator = this.delta.tokens.mul(output_amount).mul(1000)
+        const denominator = (this.delta.eth.minus(output_amount)).mul(997)
         const delta = new Delta(numerator.div(denominator).plus(1).neg(), output_amount, new BN(0))
         return this.performDelta(delta)
     }
@@ -182,7 +178,7 @@ export class State {
     ): Trade {
         if (!(eth_sold.greaterThan(0))) throw new Error("ETH_SOLD NEGATIVE");
         if (!(min_tokens.greaterThan(0))) throw new Error("MIN_TOKENS NEGATIVE");
-        return this.getInputPrice(eth_sold, this.delta.eth, this.tokenReserve);
+        return this.getInputPrice(eth_sold);
     }
 
 
@@ -221,7 +217,7 @@ export class State {
         if (!(tokens_bought.greaterThan(0))) throw new Error("TOKENS BOUGHT NEGATIVE");
         if (!(max_eth.greaterThan(0))) throw new Error("ETH BOUGHT NEGATIVE");
 
-        return this.getOutputPrice(tokens_bought, this.delta.eth, this.tokenReserve)
+        return this.getOutputPrice(tokens_bought)
     }
 
 
@@ -280,7 +276,7 @@ export class State {
     ): Trade {
         if (!(eth_bought.greaterThan(0))) throw new Error("NEGATIVE_ETH_BOUGHT");
 
-        return this.getOutputPrice(eth_bought, this.tokenReserve, this.delta.eth)
+        return this.getOutputPrice(eth_bought)
     }
 
 
