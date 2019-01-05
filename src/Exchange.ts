@@ -312,9 +312,9 @@ Exchange.prototype.removeLiquidity = function (
 
 
 Exchange.prototype.getInputPrice = function (
-    input_amount = new BN(1),
-    input_reserve = this.ethReserve,
-    output_reserve = this.tokenReserve
+    input_amount,
+    input_reserve,
+    output_reserve
 ): delta {
     if (!(input_reserve.greaterThan(0) && output_reserve.greaterThan(0))) return;
     const input_amount_with_fee = input_amount.mul(997)
@@ -337,9 +337,9 @@ Exchange.prototype.getInputPrice = function (
 //     return numerator / denominator + 1
 
 Exchange.prototype.getOutputPrice = function (
-    output_amount = new BN(1),
-    input_reserve = this.ethReserve,
-    output_reserve = this.tokenReserve
+    output_amount,
+    input_reserve,
+    output_reserve
 ): delta {
     if (!(input_reserve.greaterThan(0) && output_reserve.greaterThan(0))) return;
     const numerator = input_reserve.mul(output_amount).mul(1000)
@@ -362,7 +362,7 @@ Exchange.prototype.ethToTokenInput = function (
 ): delta {
     if (!(eth_sold.greaterThan(0))) throw new Error("ETH_SOLD NEGATIVE");
     if (!(min_tokens.greaterThan(0))) throw new Error("MIN_TOKENS NEGATIVE");
-    const delta = this.getInputPrice(eth_sold);
+    const delta = this.getInputPrice(eth_sold, this.ethReserve, this.tokenReserve);
     if (!(delta.tokens.gte(min_tokens))) return;
 
     this.performDelta(delta)
@@ -422,7 +422,7 @@ Exchange.prototype.ethToTokenOutput = function (
     if (!(tokens_bought.greaterThan(0))) throw new Error("TOKENS BOUGHT NEGATIVE");
     if (!(max_eth.greaterThan(0))) throw new Error("ETH BOUGHT NEGATIVE");
 
-    const delta = this.getOutputPrice(tokens_bought)
+    const delta = this.getOutputPrice(tokens_bought, this.ethReserve, this.tokenReserve)
 
     this.performDelta(delta)
 
@@ -506,7 +506,7 @@ Exchange.prototype.tokenToEthOutput = function (
 ): delta {
     if (!(eth_bought.greaterThan(0))) throw new Error("NEGATIVE_ETH_BOUGHT");
 
-    const delta = this.getOutputPrice(eth_bought)
+    const delta = this.getOutputPrice(eth_bought, this.tokenReserve, this.ethReserve)
 
     this.performDelta(delta)
 
