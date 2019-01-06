@@ -2,8 +2,10 @@ import BN from 'bignumber.js';
 import { State } from './State';
 export declare class Exchange {
     state: State;
-    name: string;
-    symbol: string;
+    exchangeName: string;
+    exchangeSymbol: string;
+    tokenName: string;
+    tokenSymbol: string;
     tokenAddress: string;
     exchangeAddress: string;
     decimals: number;
@@ -15,8 +17,10 @@ export declare class Exchange {
     totalSupply(): Promise<BN>;
     tokenReserve(): Promise<BN>;
     ethReserve(): Promise<BN>;
-    updateSymbol(): Promise<string>;
-    updateName(): Promise<string>;
+    updateExchangeSymbol(): Promise<string>;
+    updateExchangeName(): Promise<string>;
+    updateTokenSymbol(): Promise<string>;
+    updateTokenName(): Promise<string>;
     updateDecimals(): Promise<number>;
     updateTokenAddress(): Promise<string>;
     getState(): Promise<State>;

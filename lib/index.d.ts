@@ -1,13 +1,11 @@
 import { Exchange } from './Exchange';
 import { State } from './State';
 import { Trade } from './Trade';
-import { Delta } from './Delta';
 declare const _default: {
     Factory: string;
     Exchange: typeof Exchange;
     State: typeof State;
     Trade: typeof Trade;
-    Delta: typeof Delta;
     addresses: {
         type: string;
         payload: {

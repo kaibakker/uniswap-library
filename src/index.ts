@@ -3,7 +3,6 @@ import { Factory } from './Factory';
 import { Exchange } from './Exchange';
 import { State } from './State';
 import { Trade } from './Trade';
-import { Delta } from './Delta';
 import { setAddresses } from './addresses';
 
 const NETWORK_ID = 1;
@@ -15,6 +14,5 @@ export default {
     Exchange,
     State,
     Trade,
-    Delta,
     addresses
 }

@@ -8,7 +8,7 @@ import BN from 'bignumber.js'
 
 
 import { State } from './State';
-import { Delta } from './Delta';
+import { Trade } from './Trade';
 
 import { setAddresses } from './addresses';
 
@@ -21,15 +21,18 @@ const web3 = new Web3(PROVIDER_URL);
 
 export class Exchange {
     state: State;
-    name: string;
-    symbol: string;
+    exchangeName: string;
+    exchangeSymbol: string;
+    tokenName: string;
+    tokenSymbol: string;
     tokenAddress: string;
     exchangeAddress: string;
     decimals: number;
 
     constructor(tokenAddress: string = null, symbol: string = null, exchangeAddress: string = null, name: string = null) {
-        this.name = name;
-        this.symbol = symbol;
+        this.tokenName = name;
+        this.tokenSymbol = symbol;
+
         this.tokenAddress = tokenAddress;
         this.exchangeAddress = exchangeAddress;
         this.decimals = 18;
@@ -71,14 +74,24 @@ export class Exchange {
         return new BN(await web3.eth.getBalance(this.exchangeAddress));
     }
 
-    async updateSymbol(): Promise<string> {
-        this.symbol = web3.utils.hexToString(await this.exchangeContract().methods.symbol().call());
-        return this.symbol;
+    async updateExchangeSymbol(): Promise<string> {
+        this.exchangeSymbol = web3.utils.hexToString(await this.exchangeContract().methods.symbol().call());
+        return this.exchangeSymbol;
     }
 
-    async updateName(): Promise<string> {
-        this.name = web3.utils.hexToString(await this.exchangeContract().methods.name().call());
-        return this.name;
+    async updateExchangeName(): Promise<string> {
+        this.exchangeName = web3.utils.hexToString(await this.exchangeContract().methods.name().call());
+        return this.exchangeName;
+    }
+
+    async updateTokenSymbol(): Promise<string> {
+        this.tokenSymbol = web3.utils.hexToString(await this.tokenContract().methods.symbol().call());
+        return this.tokenSymbol;
+    }
+
+    async updateTokenName(): Promise<string> {
+        this.tokenName = web3.utils.hexToString(await this.tokenContract().methods.name().call());
+        return this.tokenName;
     }
 
     async updateDecimals(): Promise<number> {
@@ -95,10 +108,10 @@ export class Exchange {
         const eth = await this.ethReserve()
         const tokens = await this.tokenReserve()
         const liquidity = await this.totalSupply()
-        const delta = new Delta(eth, tokens, liquidity)
-        const state = new State(delta)
-        this.state = state;
-        return state;
+        this.state = new State(eth, tokens, liquidity)
+
+
+        return this.state;
     }
 
     async getStateFromLogs(): Promise<State> {
@@ -107,14 +120,15 @@ export class Exchange {
             toBlock: 'latest'
         };
 
-        const events = this.exchangeContract().getPastEvents("allEvents", options)
+        const events = await this.exchangeContract().getPastEvents("allEvents", options)
 
         return events.reduce((state, event) => {
-            return state.createTxFromEvent(event).toState;
-        }, this)
+            console.log(event)
+            return state.addEvent(event).toState;
+        }, new State())
     }
 
     toString(): string {
-        return `${this.symbol}(${this.ethReserve.toString()}, ${this.tokenReserve.toString()}, ${this.totalSupply.toString()})`;
+        return `${this.tokenSymbol}(${this.ethReserve.toString()}, ${this.tokenReserve.toString()}, ${this.totalSupply.toString()})`;
     }
 }

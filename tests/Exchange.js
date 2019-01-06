@@ -50,18 +50,32 @@ describe('class Exchange()', () => {
         expect(await exchange.tokenReserve()).to.be.bignumber;
     });
 
-    it('updates symbol correctly', async () => {
+    it('updates tokenSymbol correctly', async () => {
         let exchange = new Exchange('0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2')
-        await exchange.updateSymbol();
+        await exchange.updateTokenSymbol();
 
-        expect(exchange.symbol).to.equal('UNI-V1');
+        expect(exchange.tokenSymbol).to.equal('Maker');
     });
 
-    it('updates name correctly', async () => {
+    it('updates tokenName correctly', async () => {
         let exchange = new Exchange('0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2')
-        await exchange.updateName();
+        await exchange.updateTokenName();
 
-        expect(exchange.name).to.equal('Uniswap V1');
+        expect(exchange.tokenName).to.equal('MKR');
+    });
+
+    it('updates exchangeSymbol correctly', async () => {
+        let exchange = new Exchange('0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2')
+        await exchange.updateExchangeSymbol();
+
+        expect(exchange.exchangeSymbol).to.equal('UNI-V1');
+    });
+
+    it('updates exchangeName correctly', async () => {
+        let exchange = new Exchange('0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2')
+        await exchange.updateExchangeName();
+
+        expect(exchange.exchangeName).to.equal('Uniswap V1');
     });
 
     it('updates decimals correctly', async () => {
