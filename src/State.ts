@@ -54,6 +54,10 @@ export class State {
         return "this.toString()";
     }
 
+    asVector(): number[] {
+        return [this.eth.dividedBy(10 ** 18).toNumber(), this.tokens.dividedBy(10 ** 18).toNumber(), this.liquidity.dividedBy(10 ** 18).toNumber()]
+    }
+
     trade(eth: BN, tokens: BN, liquidity: BN = new BN(0)): Trade {
         return new Trade(
             this.eth.plus(new BN(eth)),

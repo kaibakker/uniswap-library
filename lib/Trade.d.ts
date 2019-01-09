@@ -9,5 +9,6 @@ export declare class Trade {
     plus(eth: any, tokens: any, liquidity: any): Trade;
     isEqual(trade: Trade): boolean;
     toString(): string;
+    asVector(): number[];
     events(): string[];
 }

@@ -9,6 +9,7 @@ export declare class State {
     reserve(): BN;
     valid(): void;
     toString(): string;
+    asVector(): number[];
     trade(eth: BN, tokens: BN, liquidity?: BN): Trade;
     tradeToPrice(price: BN, max_liquidity?: BN): Trade;
     addEvent(event: any): Trade;

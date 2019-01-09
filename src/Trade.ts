@@ -34,6 +34,9 @@ export class Trade {
         return ""
     }
 
+    asVector(): number[] {
+        return [this.delta.eth.dividedBy(10 ** 18).toNumber(), this.delta.tokens.dividedBy(10 ** 18).toNumber(), this.delta.liquidity.dividedBy(10 ** 18).toNumber()]
+    }
 
     events(): string[] {
         if (this.delta.liquidity.eq(0)) {
