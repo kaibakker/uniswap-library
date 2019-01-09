@@ -5,14 +5,14 @@ const BN = require("bignumber.js")
 chai.use(require('chai-bignumber')(BN));
 const expect = chai.expect;
 
-const { Delta } = require('../lib/Delta.js');
+const { Trade } = require('../lib/Trade.js');
 
 
-const delta1 = new Delta(new BN(10), new BN(1000), new BN(1))
-const delta2 = new Delta(new BN(1), new BN(1), new BN(1))
-const delta3 = new Delta(new BN(11), new BN(1001), new BN(2))
+const delta1 = new Trade(new BN(10), new BN(1000), new BN(1))
+const delta2 = new Trade(new BN(1), new BN(1), new BN(1))
+const delta3 = new Trade(new BN(11), new BN(1001), new BN(2))
 
-describe('class Delta()', () => {
+describe('class Trade()', () => {
     it('can be compared and return true', () => {
         expect(delta1.isEqual(delta1)).to.be.true;
     });

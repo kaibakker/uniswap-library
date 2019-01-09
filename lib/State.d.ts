@@ -11,9 +11,9 @@ export declare class State {
     toString(): string;
     trade(eth: BN, tokens: BN, liquidity?: BN): Trade;
     tradeToPrice(price: BN, max_liquidity?: BN): Trade;
-    tradeToLiquidity(liquidity: BN): Trade;
     addEvent(event: any): Trade;
     addLiquidity(eth: BN, min_liquidity?: BN, max_tokens?: BN): Trade;
+    active(): boolean;
     removeLiquidity(liquidity: BN, min_eth?: BN, min_tokens?: BN): Trade;
     getInputPrice(input_amount: BN, input_reserve: BN, output_reserve: BN): Trade;
     getOutputPrice(output_amount: BN, input_reserve: BN, output_reserve: BN): Trade;

@@ -80,10 +80,6 @@ export class State {
         }
     }
 
-    tradeToLiquidity(liquidity: BN): Trade {
-        return this.addLiquidity(liquidity);
-    }
-
     addEvent(event: any): Trade {
         let eth = new BN(0), tokens = new BN(0), liquidity = new BN(0);
         if (event.event === 'RemoveLiquidity') {
@@ -129,19 +125,28 @@ export class State {
         min_liquidity: BN = undefined,
         max_tokens: BN = undefined
     ): Trade {
-        if (!(max_tokens.greaterThan(0) && eth.greaterThan(0))) throw new Error("Error");
+        const _eth = new BN(eth)
 
-        if (this.liquidity.greaterThan(0)) {
-            if (!(min_liquidity.greaterThan(0))) throw new Error("Error");
+        if (!(eth.greaterThan(0)))
+            throw new Error("Error Eth");
 
-            const tokens = eth.mul(this.tokens).div(this.eth).plus(1);
-            const liquidity = eth.mul(this.liquidity).div(this.eth);
-            if (!(max_tokens.greaterThanOrEqualTo(tokens) && liquidity.greaterThanOrEqualTo(min_liquidity))) throw new Error("Error");
-            return this.trade(eth, tokens, liquidity)
+        // not empty
+        if (this.active()) {
+            const tokens = _eth.mul(this.tokens).div(this.eth).plus(1);
+            const liquidity = _eth.mul(this.liquidity).div(this.eth);
+
+            if (max_tokens && tokens.lt(max_tokens) && max_tokens.gt(0))
+                throw new Error("Error Tokens");
+            if (min_liquidity && liquidity.lt(min_liquidity) && min_liquidity.gt(0))
+                throw new Error("Error liquidity");
+            return this.trade(_eth, tokens, liquidity)
         } else {
-            return this.trade(eth, max_tokens, min_liquidity)
+            return this.trade(_eth, new BN(max_tokens), new BN(min_liquidity))
         }
+    }
 
+    active(): boolean {
+        return this.liquidity.greaterThan(0)
     }
 
     // # @dev Burn UNI tokens to withdraw ETH and Tokens at current ratio.
