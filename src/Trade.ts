@@ -17,11 +17,11 @@ export class Trade {
         this.delta.liquidity = new BN(liquidity);
     }
 
-    plus(eth, tokens, liquidity): Trade {
+    plus(eth: BN, tokens: BN, liquidity: BN = new BN(0)): Trade {
         return new Trade(
-            this.delta.eth.plus(eth),
-            this.delta.tokens.plus(tokens),
-            this.delta.liquidity.plus(liquidity)
+            this.delta.eth.plus(new BN(eth)),
+            this.delta.tokens.plus(new BN(tokens)),
+            this.delta.liquidity.plus(new BN(liquidity))
         );
     }
 
